@@ -16,6 +16,29 @@ var Init = {
 
     var init_config;
 
+    // check if url supplied and divert
+    var checkExistsOpts, ghdownloadOpts;
+    if (name.match('https://') != null) {
+      var path = name.replace('https://www.github.com', '');
+      checkExistsOpts = {
+        method: 'HEAD',
+        host: 'raw.githubusercontent.com',
+        path: path
+      };
+      ghdownloadOpts = name
+    } else {
+      checkExistsOpts = {
+          method: 'HEAD',
+          host: 'raw.githubusercontent.com',
+          path: '/trufflesuite/' + expected_full_name + "/master/truffle.js"
+        };
+      ghdownloadOpts = {
+          user: 'trufflesuite',
+          repo: expected_full_name,
+          ref: 'master'
+        }
+    }
+
     // First check for existence of truffle.js or truffle-config.js within the destination.
     // If either exist, fail.
     return Promise.resolve().then(function() {
@@ -29,13 +52,7 @@ var Init = {
       // Next let's see if the expected repository exists. If it doesn't, ghdownload
       // will fail spectacularly in a way we can't catch, so we have to do it ourselves.
       return new Promise(function(accept, reject) {
-
-        var options = {
-          method: 'HEAD',
-          host: 'raw.githubusercontent.com',
-          path: '/trufflesuite/' + expected_full_name + "/master/truffle.js"
-        };
-        req = https.request(options, function(r) {
+        req = https.request(checkExistsOpts, function(r) {
           if (r.statusCode == 404) {
             return reject(new Error("Example '" + name + "' doesn't exist. If you believe this is an error, please contact Truffle support."));
           } else if (r.statusCode != 200) {
@@ -61,11 +78,7 @@ var Init = {
         config.logger.log("Downloading project...");
 
         // Download the package from github.
-        ghdownload({
-          user: 'trufflesuite',
-          repo: expected_full_name,
-          ref: 'master'
-        }, temp_directory)
+        ghdownload(ghdownloadOpts, temp_directory)
         .on('err', function(err) {
           reject(err);
         })
